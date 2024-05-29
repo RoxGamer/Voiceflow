@@ -20,12 +20,12 @@ model = replicate
 # Render live transcription page
 @app.route("/")
 def live_transcription():
-    return render_template("in.html")
+    return render_template("index.html")
 
 # Render audio upload page
 @app.route("/upload")
 def upload():
-    return render_template("up.html")
+    return render_template("upload.html")
 
 # Function to transcribe audio using Whisper
 @app.route("/process-audio", methods=["POST"])

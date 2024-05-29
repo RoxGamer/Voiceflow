@@ -8,7 +8,7 @@ import os
 # Set up environment variables
 # os.environ["REPLICATE_API_TOKEN"] = "r8_R1n2idLc4rEKQ2L8rLYccorkJIXReIK4e5Kgj"
 
-os.environ["REPLICATE_API_TOKEN"] = "r8_C7O2cujCKMr7f0Q3ucQopVzW8YlSywK362Fjo"
+os.environ["REPLICATE_API_TOKEN"] = "r8_23PMJ1t8EIc7ZdKE3qoMDANsBLAvEAT1iBkAe"
 
 cloudinary.config(
     cloud_name='dh3irgunk',

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Speech to Text</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cabin+Sketch:wght@400;700&display=swap">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-image: url('https://static.vecteezy.com/system/resources/previews/008/311/935/non_2x/the-illustration-graphic-consists-of-abstract-background-with-a-blue-gradient-dynamic-shapes-composition-eps10-perfect-for-presentation-background-website-landing-page-wallpaper-vector.jpg');
+            background-size: cover;
+            background-position: center;
+            margin: 0;
+            color: white;
+            overflow: hidden; /* Prevent scrollbar when menu is shown */
+        }
+        h1 {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            font-family: 'Cabin Sketch', cursive;
+            font-size: 3rem; /* Adjust size as needed */
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        #start-btn, #recordButton {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #stop-btn {
+            background-color: #f44336;
+            color: white;
+        }
+        #summaryButton {
+            background-color: #008CBA;
+            color: white;
+        }
+        #clearButton {
+            background-color: #f44336;
+            color: white;
+        }
+        .voiceflow {
+            font-family: 'Cabin Sketch', cursive;
+            color: #ff6100;
+            font-size: 78px;
+            margin-bottom: -20px;
+            margin-top: -100px;
+        }
+        #uploadPageButton {
+            background-color: #000000;
+            color: white;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+        }
+        button:hover {
+            transform: scale(1.1);
+        }
+        button:active {
+            transform: scale(1.05);
+        }
+        #transcription, #transcript, #suggestionArea {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 80%;
+            max-width: 600px;
+            transition: opacity 0.3s;
+            color: black;
+            overflow: auto;
+        }
+        #transcription.hidden, #transcript.hidden, #suggestionArea.hidden {
+            opacity: 0;
+        }
+        #side-menu {
+            position: fixed;
+            top: 0;
+            right: -270px; /* Partially hidden by default */
+            width: 300px;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.5);
+            transition: right 0.3s, filter 0.3s;
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 1000; /* Ensure the side menu is on top */
+            filter: blur(2px);
+        }
+        #side-menu.visible {
+            right: 0;
+            filter: blur(0);
+        }
+        #side-menu h2 {
+            color: white;
+        }
+        #side-menu textarea {
+            width: 100%;
+            height: 60%;
+            background-color: rgba(51, 51, 51, 0.9);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            resize: none;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="voiceflow">Voiceflow</div>
+    <h1>Real-Time Speech to Text</h1>
+    <button id="uploadPageButton" onclick="window.location.href='/upload'">Upload Audio</button>
+    <div style="display: flex; justify-content: center; width: 100%; max-width: 600px;">
+        <button id="recordButton">Start Recording</button>
+        <button id="clearButton">Clear Transcript</button>
+    </div>
+    <div id="transcript" class="hidden"></div>
+    <button id="summaryButton">Get Suggestion</button>
+    <div id="suggestionArea" class="hidden"></div>
+    
+    <div id="side-menu">
+        <h2>Prompt</h2>
+        <textarea id="prompt" rows="10">You are a summarizing agent</textarea>
+    </div>
+
+    <script>
+        const recordButton = document.getElementById('recordButton');
+        const transcriptDiv = document.getElementById('transcript');
+        const summaryButton = document.getElementById('summaryButton');
+        const clearButton = document.getElementById('clearButton');
+        const sideMenu = document.getElementById('side-menu');
+        const promptTextarea = document.getElementById('prompt');
+        const suggestionArea = document.getElementById('suggestionArea');
+        
+        let isRecording = false;
+        let mediaRecorder;
+        let intervalId;
+        let full_transcript = '';
+
+        sideMenu.addEventListener('click', (event) => {
+            event.stopPropagation(); // Prevent the click from propagating to the body
+            if (!sideMenu.classList.contains('visible')) {
+                toggleSideMenu();
+            }
+        });
+
+        document.body.addEventListener('click', (event) => {
+            if (!sideMenu.contains(event.target) && sideMenu.classList.contains('visible')) {
+                sideMenu.classList.remove('visible');
+            }
+        });
+
+        function toggleSideMenu() {
+            sideMenu.classList.toggle('visible');
+        }
+
+        summaryButton.addEventListener('click', async () => {
+            const promptText = document.getElementById('prompt').value;
+            
+            const response = await fetch('/get-suggestion', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ transcript: full_transcript, prompt: promptText })
+            });
+
+            const data = await response.json();
+            suggestionArea.textContent = data.suggestion;
+            suggestionArea.classList.remove('hidden');
+        });
+
+        recordButton.addEventListener('click', () => {
+            if (!isRecording) {
+                startRecording();
+                recordButton.textContent = 'Stop Recording';
+            } else {
+                stopRecording();
+                recordButton.textContent = 'Start Recording';
+            }
+            isRecording = !isRecording;
+        });
+
+        async function startRecording() {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            function createRecorder() {
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.addEventListener('dataavailable', async event => {
+                    const audioBlob = event.data;
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob);
+
+                    const response = await fetch('/process-audio', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    if(data.transcript != null){
+                        full_transcript += data.transcript;
+                        transcriptDiv.textContent = full_transcript;
+                        transcriptDiv.classList.remove('hidden');
+                    }
+                });
+                
+                mediaRecorder.start();
+            }
+
+            createRecorder();
+
+            intervalId = setInterval(() => {
+                mediaRecorder.stop();
+                createRecorder();
+            }, 5000);
+        }
+
+        function stopRecording() {
+            clearInterval(intervalId);
+            mediaRecorder.stop();
+        }
+
+        clearButton.addEventListener('click', () => {
+            full_transcript = '';
+            transcriptDiv.textContent = '';
+            transcriptDiv.classList.add('hidden');
+        });
+    </script>
+</body>
+</html>

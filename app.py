@@ -6,7 +6,7 @@ import tempfile
 import os
 
 # Set up environment variables
-os.environ["REPLICATE_API_TOKEN"] = "r8_2iIYIVpedr4B3uCtQaBacQnInJmggvM4MvF9f"
+os.environ["REPLICATE_API_TOKEN"] = "r8_R1n2idLc4rEKQ2L8rLYccorkJIXReIK4e5Kgj"
 
 cloudinary.config(
     cloud_name='dh3irgunk',
